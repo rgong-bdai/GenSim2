@@ -1,20 +1,12 @@
-import numpy as np
-import argparse
-import icecream
-import hydra
-import yaml
-import ipdb
+import os
+import time
 
 from gensim2.env.task.origin_tasks import *
 from gensim2.env.task.primitive_tasks import *
 from gensim2.env.solver.planner import KPAMPlanner
 from gensim2.env.create_task import create_gensim
-from gensim2.agent.dataset.sim_traj_dataset import TrajDataset
 
 from common_parser import parser
-
-from transforms3d.quaternions import quat2mat
-from transforms3d.euler import mat2euler, euler2mat
 
 parser.add_argument("--num_episodes", type=int, default=5)
 parser.add_argument("--max_steps", type=int, default=500)
@@ -50,9 +42,18 @@ if __name__ == "__main__":
         print("======================================")
         config_path = f"gensim2/env/solver/kpam/config/{args.env}.yaml"
         load_file = open(config_path, mode="r")
-        expert_planner = KPAMPlanner(
-            env, config_path, env.task.articulator.random_pose["rot"]
-        )
+        
+        # Handle different task types
+        has_articulator = (hasattr(env.task, 'articulator') and
+                         env.task.articulator is not None)
+        if has_articulator:
+            # Articulated object task
+            expert_planner = KPAMPlanner(
+                env, config_path, env.task.articulator.random_pose["rot"]
+            )
+        else:
+            # Rigid body task - no articulator rotation needed
+            expert_planner = KPAMPlanner(env, config_path)
 
         print(f"Running Episode {eps} for {args.env}")
         obs = env.reset(args.random)
@@ -72,8 +73,13 @@ if __name__ == "__main__":
         t = time.time()
         traj = []
         qpos = env.get_joint_positions()
-        openness = env.articulator.get_openness()[0]
-
+        
+        # Handle different task types for trajectory logging
+        if hasattr(env.task, 'articulator') and env.task.articulator is not None:
+            openness = env.articulator.get_openness()[0]
+        else:
+            openness = 0.0  # No articulator for rigid body tasks
+        
         traj.append({"qpos": qpos, "openness": openness})
 
         for i in range(args.max_steps):
@@ -88,7 +94,8 @@ if __name__ == "__main__":
                 env.render()
 
             if done:
-                if env.task.articulator is not None:
+                # Handle different task types for progress reporting
+                if hasattr(env.task, 'articulator') and env.task.articulator is not None:
                     print("Openness:", env.task.articulator.get_openness())
                 print("Task Solved:", env.task.get_progress_state())
                 print("Time:", print(time.time() - t))

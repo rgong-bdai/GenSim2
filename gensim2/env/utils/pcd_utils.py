@@ -77,7 +77,7 @@ def pcd_downsample(
     ground_eps=-1e-3,
     max_dis=15,
     num=1200,
-    method="fps",
+    method="uniform",
     bound=BOUND,
 ):
     assert method in [

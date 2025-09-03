@@ -557,11 +557,50 @@ class KPAMPlanner:
             )
 
         """get the task-space action from the kpam expert joint trajectory"""
-
         traj_eff_pose = self.task_space_traj.value(self.time + self.dt)
         pose_action = self.get_pose_action(traj_eff_pose)
-
-        return pose_action
+        
+        # Determine gripper state and apply post-actuation motions
+        gripper_state = self.env.gripper_state
+        final_pose = traj_eff_pose.copy()
+        
+        # Apply post-actuation motions after gripping
+        if hasattr(self, 'post_actuation_motions') and self.env.time >= self.actuation_time:
+            for i, motion in enumerate(self.post_actuation_motions):
+                # Check if post_actuation_times exists and has enough elements
+                if hasattr(self, 'post_actuation_times') and len(self.post_actuation_times) > i:
+                    motion_time = self.post_actuation_times[i]
+                else:
+                    # Fallback: generate timing automatically
+                    motion_time = self.actuation_time + (i + 1) * 4
+                
+                if self.env.time >= motion_time:
+                    if motion[0] == "gripper_close":
+                        gripper_state = 0.0  # Close gripper
+                        print(f"Closing gripper at time {self.env.time}")
+                    elif motion[0] == "gripper_open":
+                        gripper_state = 1.0  # Open gripper
+                        print(f"Opening gripper at time {self.env.time}")
+                    elif motion[0].startswith("translate_"):
+                        # Apply translation motion
+                        axis = motion[0].split("_")[1]  # x, y, or z
+                        value = motion[1]
+                        if axis == "x":
+                            final_pose[0, 3] += value
+                        elif axis == "y":
+                            final_pose[1, 3] += value
+                        elif axis == "z":
+                            final_pose[2, 3] += value
+                        print(f"Applying {motion[0]} motion: {value} at time {self.env.time}")
+                    elif motion[0].startswith("rotate"):
+                        # Apply rotation motion
+                        # Add rotation logic here
+                        pass
+        
+        # Create final action with modified pose and gripper state
+        action = np.concatenate([pose_action[:-1], [gripper_state]])
+        
+        return action
 
     def get_actuation_qpos(self):
         """get the actuation qpos"""

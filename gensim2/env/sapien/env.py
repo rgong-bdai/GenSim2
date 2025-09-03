@@ -31,7 +31,7 @@ SPARSE_ASSET_LIST = ["toaster_press"]
 LARGE_FRICTION_ASSET_LIST = ["toaster_press"]
 SMALL_FRICTION_ASSET_LIST = ["bucket_swing"]
 
-LARGE_GRIP_FORCE_ASSET_LIST = ["mug"]
+LARGE_GRIP_FORCE_ASSET_LIST = ["mug", "banana"]
 
 
 class SapienEnv(SapienSim, GenSimBaseEnv):
@@ -237,7 +237,7 @@ class SapienEnv(SapienSim, GenSimBaseEnv):
         pointcloud_obs = self.get_pcds_from_cameras()
         pointcloud_obs = self.merge_pointclouds(pointcloud_obs)
         pointcloud_obs = pcd_downsample(
-            pointcloud_obs, num=self.num_pcd, method="fps", bound_clip=True
+            pointcloud_obs, num=self.num_pcd, method="uniform", bound_clip=True
         )
 
         return pointcloud_obs
@@ -695,8 +695,18 @@ class SapienEnv(SapienSim, GenSimBaseEnv):
         builder = self.sim.create_actor_builder()
         scales = np.array([scale] * 3)
         density = 100
+        # Create custom material for specific objects
+        if instance_cls == "banana":
+            material = self.sim.create_physical_material(0.9, 0.9, 0.00)
+        else:
+            material = self.sim.create_physical_material(0.4, 0.3, 0.1)
+
+        # Apply to collision shapes
         builder.add_multiple_collisions_from_file(
-            str(collision_file), scale=scales, density=density
+            str(collision_file),
+            scale=scales,
+            density=density,
+            material=material  # ← This sets the material
         )
         builder.add_visual_from_file(str(visual_file), scale=scales)
         instance = builder.build(name=instance_cls)

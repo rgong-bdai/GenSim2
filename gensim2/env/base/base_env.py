@@ -13,7 +13,7 @@ from pathlib import Path
 import json
 
 from gensim2.env.utils.common import merge_dicts
-from gensim2.env.utils.random import np_random
+from gensim2.env.utils.gensim2_random import np_random
 from gensim2.paths import *
 from gensim2.env.utils.common import merge_dict_spaces
 
@@ -217,6 +217,7 @@ class GenSimBaseEnv(gym.Env):
             pose[3:] = action[3:7]
 
         open_gripper = action[-1]
+        print("Open gripper:", open_gripper)
         self.set_gripper(open_gripper)
 
         self.plan_timestep = 0.1

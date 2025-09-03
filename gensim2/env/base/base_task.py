@@ -178,6 +178,28 @@ class GenSimBaseTask(object):
             new_progress = check_openness(self.articulator.get_openness()[0], 1, 0.2)
         elif criterion == "articulated_closed":
             new_progress = check_openness(self.articulator.get_openness()[0], 0, 0.2)
+        elif criterion == "height_rigidbody":
+            # Check if rigid body is lifted above a target height
+            if self.rigid_body is not None:
+                if isinstance(self.rigid_body, list):
+                    # Handle multiple rigid bodies - check if any are lifted
+                    heights = [rigid.pos[2] for rigid in self.rigid_body]
+                    max_height = max(heights)
+                    target_height = 0.1  # 10cm above table
+                    threshold = 0.05  # 5cm tolerance
+                    new_progress = abs(max_height - target_height) < threshold
+                else:
+                    # Single rigid body
+                    obj_height = self.rigid_body.pos[2]
+                    target_height = 0.1  # 10cm above table
+                    threshold = 0.05  # 5cm tolerance
+                    new_progress = abs(obj_height - target_height) < threshold
+            else:
+                new_progress = False
+        elif criterion == "dummy_criterion":
+            # Dummy criterion for tasks that implement custom progress checking
+            # This prevents crashes but doesn't affect the actual progress
+            new_progress = False
 
         self.progress[self.task_step] = new_progress
 

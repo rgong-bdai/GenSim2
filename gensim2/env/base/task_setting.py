@@ -221,40 +221,40 @@ CAMERA_CONFIG = {
     #     "instance_1": dict(
     #         pose=np.concatenate([np.array([0, 0.8, 0.5]), transforms3d.euler.euler2quat(np.pi / 3, np.pi, 0)]),
     #         fov=np.deg2rad(69.4),
-    #         resolution=(512, 512),
+    #         resolution=(320, 240),
     #     )
     #     # "instance_1": dict(
     #     #     pose=np.concatenate([np.array([0, 1, 0.5]), transforms3d.euler.euler2quat(np.pi / 2, np.pi, 0)]),
     #     #     fov=np.deg2rad(69.4),
-    #     #     resolution=(64, 64),
+    #     #     resolution=(320, 240),
     #     # ),
     # },
     # "bucket": {
     #     "instance_1": dict(
     #         pose=np.concatenate([np.array([0, 1, 0.5]), transforms3d.euler.euler2quat(np.pi / 2, np.pi, 0)]),
     #         fov=np.deg2rad(69.4),
-    #         resolution=(64, 64),
+    #         resolution=(320, 240),
     #     ),
     # },
     # "laptop": {
     #     "instance_1": dict(
     #         pose=np.concatenate([np.array([0, 1, 0.5]), transforms3d.euler.euler2quat(np.pi / 2, np.pi, 0)]),
     #         fov=np.deg2rad(69.4),
-    #         resolution=(64, 64),
+    #         resolution=(320, 240),
     #     ),
     # },
     # "toilet": {
     #     "instance_1": dict(
     #         pose=np.concatenate([np.array([0, 1, 0.5]), transforms3d.euler.euler2quat(np.pi / 2, np.pi, 0)]),
     #         fov=np.deg2rad(69.4),
-    #         resolution=(64, 64),
+    #         resolution=(320, 240),
     #     ),
     # },
     # "default": {
     #     "instance_1": dict(
     #         pose=np.concatenate([np.array([0, 1, 0.5]), transforms3d.euler.euler2quat(np.pi / 2, np.pi, 0)]),
     #         fov=np.deg2rad(69.4),
-    #         resolution=(64, 64),
+    #         resolution=(320, 240),
     #     ),
     # },
     "default": {
@@ -266,7 +266,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         )
     },
     "viz": {
@@ -275,7 +275,7 @@ CAMERA_CONFIG = {
                 [0.375, 0.696, 0.6, 0.412333, 0.212321, 0.0994459, -0.880348]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         )
     },
     "wrist": {
@@ -292,7 +292,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=[np.deg2rad(87), np.deg2rad(58)],
-            resolution=(640, 480),
+            resolution=(320, 240),
             mount_actor_name="panda_hand",  # "panda_hand",
             noise_scale=0.5,
         )
@@ -306,7 +306,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         )
     },
     "left": {
@@ -323,7 +323,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=[np.deg2rad(87), np.deg2rad(58)],
-            resolution=(640, 480),
+            resolution=(320, 240),
             noise_scale=0.5,
         )
     },
@@ -341,7 +341,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=[np.deg2rad(87), np.deg2rad(58)],
-            resolution=(640, 480),
+            resolution=(320, 240),
             noise_scale=0.5,
         )
     },
@@ -353,7 +353,7 @@ CAMERA_CONFIG = {
             # from left side.
             right_dir=np.array([-1.5, -2, 0]),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         ),
         "faucet_viz2": dict(
             pose=np.concatenate(
@@ -363,7 +363,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         ),
         "bucket_viz": dict(
             pose=np.concatenate(
@@ -373,7 +373,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         ),
         "laptop_viz": dict(
             pose=np.concatenate(
@@ -383,7 +383,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         ),
         "toilet_viz": dict(
             pose=np.concatenate(
@@ -393,7 +393,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         ),
         "default_viz": dict(
             pose=np.concatenate(
@@ -403,7 +403,7 @@ CAMERA_CONFIG = {
                 ]
             ),
             fov=np.deg2rad(69.4),
-            resolution=(512, 512),
+            resolution=(320, 240),
         ),
     },
 }

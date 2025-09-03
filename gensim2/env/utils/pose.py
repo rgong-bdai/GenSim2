@@ -206,6 +206,7 @@ DEFAULT_POSE_DICT = {
     # "clamp": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
     # "marker": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
     # "fork": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
+    "banana": np.array([-0.2, 0.0, 0.03, 1, 0, 0, 0]),
     "spoon": np.array([-0.2, 0, 0.03, 1, 0, 0, 0]),
     # "knife": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
     # "spatula": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
@@ -288,8 +289,8 @@ def set_random_pose(obj, cls, id=None, task="articulated"):
         quat = pose[3:].copy()
 
         if task == "articulated" or task == "rigidbody" or cls in ALL_RIGIDBODY_OBJECTS:
-            rand_xrange = 0.1
-            rand_yrange = 0.1
+            rand_xrange = 0.2
+            rand_yrange = 0.2
             rand_pos = np.zeros(2)
             rand_pos[0] = np.random.uniform(-rand_xrange, rand_xrange)
             rand_pos[1] = np.random.uniform(-rand_yrange, rand_yrange)

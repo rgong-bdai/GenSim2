@@ -1,10 +1,4 @@
-import numpy as np
 import icecream
-import ipdb
-import json
-from collections import defaultdict
-import os
-import datetime
 
 from gensim2.env.task.origin_tasks import *
 from gensim2.env.task.primitive_tasks import *
@@ -19,7 +13,8 @@ parser.add_argument("--max_steps", type=int, default=500)
 parser.add_argument("--load_from_cache", action="store_true")
 parser.add_argument("--dataset", type=str, default="gensim2")
 
-envs = [
+# Define both articulated and rigid object tasks
+articulated_envs = [
     "OpenBox",
     "CloseBox",
     "OpenLaptop",
@@ -46,6 +41,17 @@ envs = [
     "OpenRefrigeratorDoor",
 ]
 
+rigid_body_envs = [
+    "ReachRigidBody",
+    "ReachCuboid", 
+    "ReachThinObject",
+    "LiftBanana",
+    "PushBox",
+]
+
+# Combine all environments
+all_envs = articulated_envs + rigid_body_envs
+
 if __name__ == "__main__":
     args = parser.parse_args()
     dataset_name = args.dataset
@@ -60,6 +66,8 @@ if __name__ == "__main__":
     success_rate = {}
     if args.env != "":
         envs = [args.env]
+    else:
+        envs = all_envs
 
     for env_name in envs:
         env = create_gensim(
@@ -91,9 +99,20 @@ if __name__ == "__main__":
                 sub_steps = []
                 config_path = f"gensim2/env/solver/kpam/config/{task}.yaml"
                 load_file = open(config_path, mode="r")
-                expert_planner = KPAMPlanner(
-                    env, config_path, env.task.articulator.random_pose["rot"]
-                )
+                
+                # Handle different task types
+                has_articulator = (hasattr(env.task, 'articulator') and
+                                 env.task.articulator is not None)
+                if has_articulator:
+                    # Articulated object task
+                    expert_planner = KPAMPlanner(
+                        env, config_path,
+                        env.task.articulator.random_pose["rot"]
+                    )
+                else:
+                    # Rigid body task - no articulator rotation needed
+                    expert_planner = KPAMPlanner(env, config_path)
+                
                 expert_planner.reset_expert()
 
                 if env.viewer and env.viewer.closed:
@@ -120,13 +139,24 @@ if __name__ == "__main__":
                     break
 
             print("Task Solved:", env.task.get_progress_state())
-            # print("Openness:", env.task.articulator.get_openness())
-            success = env.task.get_progress_state()
+            
+            # Handle different progress checking for different task types
+            has_articulator = (hasattr(env.task, 'articulator') and
+                             env.task.articulator is not None)
+            if has_articulator:
+                # Articulated object task
+                success = env.task.get_progress_state()
+            else:
+                # Rigid body task - check if task is complete
+                success = env.task.get_progress_state()
+            
             if success >= 1.0:
                 eps += 1
                 if args.save:
                     for sub_steps, task_description in steps:
-                        dataset.append_episode(sub_steps, task_description, env_name)
+                        dataset.append_episode(
+                            sub_steps, task_description, env_name
+                        )
                     print("Episode Succeed and Saved!")
                 else:
                     print("Episode Succeed!")
