@@ -74,10 +74,48 @@ def load_vpl_data(data_dir: Path):
             with h5py.File(h5_path, 'r') as f:
                 episode_data = {}
                 for key in f.keys():
-                    episode_data[key] = f[key][:]
+                    if isinstance(f[key], h5py.Group):
+                        # Handle groups (like pointcloud)
+                        if key == 'pointcloud':
+                            # Load timestep data from pointcloud group
+                            pc_group = f[key]
+                            timestep_keys = [k for k in pc_group.keys() if k.startswith('timestep_')]
+                            timestep_keys.sort()
+                            
+                            # Extract positions and colors from first few timesteps for visualization
+                            positions = []
+                            colors = []
+                            for ts_key in timestep_keys[:10]:  # Limit to first 10 for performance
+                                ts_group = pc_group[ts_key]
+                                if 'pos' in ts_group:
+                                    positions.append(ts_group['pos'][:])
+                                if 'colors' in ts_group:
+                                    colors.append(ts_group['colors'][:])
+                            
+                            episode_data['pointcloud_pos'] = positions
+                            episode_data['pointcloud_colors'] = colors
+                        else:
+                            # For other groups, try to extract what we can
+                            episode_data[key] = {}
+                            for subkey in f[key].keys():
+                                try:
+                                    episode_data[key][subkey] = f[key][subkey][:]
+                                except:
+                                    pass
+                    else:
+                        # Handle datasets
+                        try:
+                            if f[key].shape == ():  # Scalar
+                                episode_data[key] = f[key][()]
+                            else:
+                                episode_data[key] = f[key][:]
+                        except Exception as e:
+                            print(f"Warning: Could not load {key}: {e}")
+                            continue
+                
                 episodes.append((episode_idx, episode_data))
-                print(f"Loaded episode {episode_idx}: "
-                      f"{len(episode_data.get('action', []))} timesteps")
+                action_len = len(episode_data.get('action', [[]])[0]) if 'action' in episode_data else 0
+                print(f"Loaded episode {episode_idx}: {action_len} timesteps")
     
     return metadata, intrinsics, episodes
 
@@ -151,14 +189,57 @@ def visualize_point_cloud(episodes, episode_idx=0, fps=30):
     trajectory_color = np.random.uniform(0, 1, 3)
     
     # Check for point cloud data
-    if 'observation' not in episode_data:
-        print("No observation data found")
+    if 'pointcloud_pos' not in episode_data:
+        print("No point cloud data found")
         return
     
-    observations = episode_data['observation']
+    positions = episode_data['pointcloud_pos']
+    colors = episode_data.get('pointcloud_colors', None)
     
-    # Handle different observation formats
-    if isinstance(observations, dict) and 'pointcloud' in observations:
+    print(f"Found {len(positions)} timesteps of point cloud data")
+    
+    # Animate through timesteps
+    vis.add_geometry(point_cloud_o3d)
+    
+    for t in range(len(positions)):
+        print(f"\rTimestep {t+1}/{len(positions)}", end='', flush=True)
+        
+        # Update point cloud
+        current_points = positions[t]
+        point_cloud_o3d.points = o3d.utility.Vector3dVector(current_points)
+        
+        # Add colors if available
+        if colors and t < len(colors):
+            current_colors = colors[t]
+            if current_colors.dtype == np.uint8:
+                current_colors = current_colors.astype(np.float32) / 255.0
+            point_cloud_o3d.colors = o3d.utility.Vector3dVector(current_colors)
+        
+        # Update visualization
+        vis.update_geometry(point_cloud_o3d)
+        vis.poll_events()
+        vis.update_renderer()
+        
+        # Check if window closed
+        if not vis.poll_events():
+            break
+            
+        time.sleep(1 / fps)
+    
+    print(f"\nAnimation complete!")
+    
+    # Keep window open for inspection
+    print("Press 'q' or close window to exit")
+    while True:
+        if not vis.poll_events():
+            break
+        vis.update_renderer()
+        time.sleep(0.1)
+    
+    vis.destroy_window()
+    
+    # Old code below - remove this section
+    if False and isinstance(observations, dict) and 'pointcloud' in observations:
         pointcloud_data = observations['pointcloud']
         
         if isinstance(pointcloud_data, dict):

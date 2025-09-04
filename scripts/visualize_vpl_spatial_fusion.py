@@ -176,10 +176,25 @@ def visualize_single_timestep(pc_data, timestep_key, use_colors, subsample, stat
         print(f"  G: [{colors[:, 1].min():.3f}, {colors[:, 1].max():.3f}]")
         print(f"  B: [{colors[:, 2].min():.3f}, {colors[:, 2].max():.3f}]")
     
-    # Visualize
-    o3d.visualization.draw_geometries([pcd, coord_frame],
-                                    window_name=f"Timestep {timestep_key}",
-                                    width=1200, height=800)
+    # Create custom visualization with better view control
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(f"Timestep {timestep_key}", width=1200, height=800)
+    
+    # Add geometries
+    vis.add_geometry(coord_frame)
+    vis.add_geometry(pcd)
+    
+    # Set view to fit and center the point cloud
+    vis.reset_view_point(True)
+    
+    # Set rendering options
+    opt = vis.get_render_option()
+    opt.background_color = np.asarray([0.1, 0.1, 0.1])
+    opt.point_size = 2.0
+    
+    # Run visualization
+    vis.run()
+    vis.destroy_window()
 
 
 def animate_timesteps(pc_data, timestep_keys, frame_range, fps, use_colors, subsample, loop, state_data):
@@ -211,6 +226,7 @@ def animate_timesteps(pc_data, timestep_keys, frame_range, fps, use_colors, subs
     
     frame_time = 1.0 / fps
     current_idx = 0
+    view_initialized = False
     
     try:
         while True:
@@ -262,6 +278,11 @@ def animate_timesteps(pc_data, timestep_keys, frame_range, fps, use_colors, subs
             
             # Update geometry
             vis.update_geometry(pcd)
+            
+            # Reset view to center on point cloud (only for first frame)
+            if not view_initialized and len(positions) > 0:
+                vis.reset_view_point(True)
+                view_initialized = True
             
             # Print progress
             robot_info = ""
