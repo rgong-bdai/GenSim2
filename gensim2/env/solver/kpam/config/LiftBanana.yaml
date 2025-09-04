@@ -11,30 +11,22 @@ constraint_list:
   tolerance: 0.0001
   type: point2point_constraint
 
-# ensure surface of the gripper to be parallel to the laptop lid
-- axis_from_keypoint_name: tool_head
-  axis_to_keypoint_name: tool_side
-  target_axis: [1, 0, 0]
-  target_axis_frame: object
-  tolerance: 0.01
-  target_inner_product: -1
-  type: frame_axis_parallel
-
+# ensure gripper approaches banana with proper orientation (90 degree rotation around Z)
 - axis_from_keypoint_name: tool_head
   axis_to_keypoint_name: tool_tail
-  target_axis: [0, 0, 1.0]
+  target_axis: [0.0, 0.0, 1.0]
   target_axis_frame: world
   tolerance: 0.01
   target_inner_product: 1
   type: frame_axis_parallel
 
 # pre-actuation pose list. 
-pre_actuation_motions: [["translate_z", 0.01]] # [adjust gripper direction and approach, move gripper above lid]
+pre_actuation_motions: [["translate_z", -0.0]] # [pre-grasp: move gripper 2cm above object keypoint]
 
 # post-actuation pose list.
-post_actuation_motions: [["gripper_close", 1.0], ["translate_z", -0.15]] # [lift banana up, close gripper, press lid down]
+post_actuation_motions: [["gripper_close", 1.0], ["translate_z", -0.2]] # [lift banana up, close gripper]
 
 # trajectory time
-actuation_time: 20 # time to reach task goal pose
-pre_actuation_times: [12]
-post_actuation_times: [12, 25]
+actuation_time: 4 # time to reach task goal pose
+pre_actuation_times: [5]
+post_actuation_times: [6, 7]

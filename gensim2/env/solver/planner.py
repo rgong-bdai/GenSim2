@@ -577,10 +577,8 @@ class KPAMPlanner:
                 if self.env.time >= motion_time:
                     if motion[0] == "gripper_close":
                         gripper_state = 0.0  # Close gripper
-                        print(f"Closing gripper at time {self.env.time}")
                     elif motion[0] == "gripper_open":
                         gripper_state = 1.0  # Open gripper
-                        print(f"Opening gripper at time {self.env.time}")
                     elif motion[0].startswith("translate_"):
                         # Apply translation motion
                         axis = motion[0].split("_")[1]  # x, y, or z
@@ -591,7 +589,6 @@ class KPAMPlanner:
                             final_pose[1, 3] += value
                         elif axis == "z":
                             final_pose[2, 3] += value
-                        print(f"Applying {motion[0]} motion: {value} at time {self.env.time}")
                     elif motion[0].startswith("rotate"):
                         # Apply rotation motion
                         # Add rotation logic here

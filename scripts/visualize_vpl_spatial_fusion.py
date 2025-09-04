@@ -50,9 +50,9 @@ def load_episode_data(data_dir, episode_idx):
         episode_data = {}
         
         # Load pointcloud timesteps
-        if 'pointcloud' in f and isinstance(f['pointcloud'], h5py.Group):
-            pc_grp = f['pointcloud']
-            episode_data['pointcloud'] = {}
+        if 'point_cloud' in f and isinstance(f['point_cloud'], h5py.Group):
+            pc_grp = f['point_cloud']
+            episode_data['point_cloud'] = {}
             
             # Get all timestep keys
             timestep_keys = [k for k in pc_grp.keys() if k.startswith('timestep_')]
@@ -62,14 +62,14 @@ def load_episode_data(data_dir, episode_idx):
             
             for ts_key in timestep_keys:
                 ts_grp = pc_grp[ts_key]
-                episode_data['pointcloud'][ts_key] = {}
+                episode_data['point_cloud'][ts_key] = {}
                 
                 for data_key in ts_grp.keys():
-                    episode_data['pointcloud'][ts_key][data_key] = ts_grp[data_key][:]
+                    episode_data['point_cloud'][ts_key][data_key] = ts_grp[data_key][:]
         
         # Load other data
         for key in f.keys():
-            if key != 'pointcloud':
+            if key != 'point_cloud':
                 try:
                     if f[key].shape == ():  # Scalar
                         episode_data[key] = f[key][()]
@@ -86,11 +86,11 @@ def visualize_spatial_fusion(episode_data, fps=8, use_colors=True, subsample=1,
                            loop=False, start_frame=0, end_frame=-1, static=False):
     """Visualize spatially-fused point cloud data frame by frame."""
     
-    if 'pointcloud' not in episode_data:
-        print("No pointcloud data found")
+    if 'point_cloud' not in episode_data:
+        print("No point cloud data found")
         return
     
-    pc_data = episode_data['pointcloud']
+    pc_data = episode_data['point_cloud']
     
     # Get timestep keys
     timestep_keys = [k for k in pc_data.keys() if k.startswith('timestep_')]

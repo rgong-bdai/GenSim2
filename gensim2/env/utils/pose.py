@@ -206,7 +206,7 @@ DEFAULT_POSE_DICT = {
     # "clamp": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
     # "marker": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
     # "fork": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
-    "banana": np.array([-0.2, 0.0, 0.03, 1, 0, 0, 0]),
+    "banana": np.array([0.3, 0.0, 0.03, 1, 0, 0, 0]),
     "spoon": np.array([-0.2, 0, 0.03, 1, 0, 0, 0]),
     # "knife": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
     # "spatula": np.array([-0.2, -0.45, 0.03, 1, 0, 0, 0]),
@@ -289,11 +289,11 @@ def set_random_pose(obj, cls, id=None, task="articulated"):
         quat = pose[3:].copy()
 
         if task == "articulated" or task == "rigidbody" or cls in ALL_RIGIDBODY_OBJECTS:
-            rand_xrange = 0.2
-            rand_yrange = 0.2
+            # Use workspace limits: [[0.15, -0.68, 0.004], [0.65, -0.20, 0.35]]
+            # X range: 0.15 to 0.65, Y range: -0.68 to -0.20
             rand_pos = np.zeros(2)
-            rand_pos[0] = np.random.uniform(-rand_xrange, rand_xrange)
-            rand_pos[1] = np.random.uniform(-rand_yrange, rand_yrange)
+            rand_pos[0] = np.random.uniform(0.2, 0.6)  # X: 0.2 to 0.6
+            rand_pos[1] = np.random.uniform(-0.6, -0.3)  # Y: -0.6 to -0.3
             # rand_pos[0], rand_pos[1] = get_random_pos(0.13)
         elif task == "longhorizon" and cls in ALL_ARTICULATED_OBJECTS:
             rand_xrange = 0.05
@@ -302,7 +302,7 @@ def set_random_pose(obj, cls, id=None, task="articulated"):
             rand_pos[0] = np.random.uniform(-rand_xrange, rand_xrange)
             rand_pos[1] = np.random.uniform(0, rand_yrange)
 
-        pos[:2] += rand_pos
+        pos[:2] = rand_pos
 
         if rand_pos[1] > 0:
             rand_rot = np.random.uniform(0, np.pi / 6)

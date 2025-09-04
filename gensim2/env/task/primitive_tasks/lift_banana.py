@@ -60,8 +60,9 @@ class LiftBanana(GenSimBaseTask):
                     return 1.0  # Task successful
                 else:
                     # Return progress as fraction of target height
-                    progress = min(current_height / target_height, 1.0)
-                    return progress
+                    # progress = min(current_height / target_height, 1.0)
+                    # return progress
+                    return 0.0
             else:
                 return 0.0
         except Exception as e:

@@ -15,7 +15,7 @@ python scripts/kpam_data_collection_vpl.py \
     --render \
     --save \
     --num_episodes 1 \
-    --max_steps 100 \
+    --max_steps 2100 \
     --vpl_dir "./vpl_data_liftbanana" \
     --log_memory
 

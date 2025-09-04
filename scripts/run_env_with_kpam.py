@@ -8,8 +8,8 @@ from gensim2.env.create_task import create_gensim
 
 from common_parser import parser
 
-parser.add_argument("--num_episodes", type=int, default=5)
-parser.add_argument("--max_steps", type=int, default=500)
+parser.add_argument("--num_episodes", type=int, default=50)
+parser.add_argument("--max_steps", type=int, default=1200)
 parser.add_argument("--video", action="store_true")
 parser.add_argument("--early_stop", action="store_true")
 

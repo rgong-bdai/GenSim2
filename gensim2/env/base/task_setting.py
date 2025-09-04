@@ -257,92 +257,161 @@ CAMERA_CONFIG = {
     #         resolution=(320, 240),
     #     ),
     # },
-    "default": {
-        "default_cam": dict(
-            pose=np.concatenate(
-                [
-                    np.array([0, -0.8, 0.5]),
-                    transforms3d.euler.euler2quat(-2 * np.pi / 3, 0, 0),
-                ]
-            ),
-            fov=np.deg2rad(69.4),
+    # "default": {
+    #     "default_cam": dict(
+    #         pose=np.concatenate(
+    #             [
+    #                 np.array([0, -0.8, 0.5]),
+    #                 transforms3d.euler.euler2quat(-2 * np.pi / 3, 0, 0),
+    #             ]
+    #         ),
+    #         fov=np.deg2rad(69.4),
+    #         resolution=(320, 240),
+    #     )
+    # },
+    # "viz": {
+    #     "viz_cam": dict(
+    #         pose=np.array(
+    #             [0.375, 0.696, 0.6, 0.412333, 0.212321, 0.0994459, -0.880348]
+    #         ),
+    #         fov=np.deg2rad(69.4),
+    #         resolution=(320, 240),
+    #     )
+    # },
+    # "wrist": {
+    #     "wrist_cam": dict(
+    #         pose=np.array(
+    #             [
+    #                 0.07552634,
+    #                 -0.02599394,
+    #                 0.02404529,
+    #                 0.73417488,
+    #                 0.02648626,
+    #                 -0.00778071,
+    #                 0.67839898,
+    #             ]
+    #         ),
+    #         fov=[np.deg2rad(87), np.deg2rad(58)],
+    #         resolution=(320, 240),
+    #         mount_actor_name="panda_hand",  # "panda_hand",
+    #         noise_scale=0.5,
+    #     )
+    # },
+    # "top": {
+    #     "top_cam": dict(
+    #         pose=np.concatenate(
+    #             [
+    #                 np.array([0, 0, 1.5]),
+    #                 transforms3d.euler.euler2quat(np.pi, 0, -np.pi / 2),
+    #             ]
+    #         ),
+    #         fov=np.deg2rad(69.4),
+    #         resolution=(320, 240),
+    #     )
+    # },
+    # "left": {
+    #     "left_cam": dict(
+    #         pose=np.array(
+    #             [
+    #                 -0.19207954,
+    #                 0.59551661,
+    #                 0.53830318,
+    #                 -0.01238816,
+    #                 -0.01772414,
+    #                 0.92530522,
+    #                 -0.37860617,
+    #             ]
+    #         ),
+    #         fov=[np.deg2rad(87), np.deg2rad(58)],
+    #         resolution=(320, 240),
+    #         noise_scale=0.5,
+    #     )
+    # },
+    # "right": {
+    #     "right_cam": dict(
+    #         pose=np.array(
+    #             [
+    #                 -0.09048795,
+    #                 -0.61669572,
+    #                 0.43609362,
+    #                 -0.47339763,
+    #                 0.88004426,
+    #                 0.03741855,
+    #                 -0.00407857,
+    #             ]
+    #         ),
+    #         fov=[np.deg2rad(87), np.deg2rad(58)],
+    #         resolution=(320, 240),
+    #         noise_scale=0.5,
+    #     )
+    # },
+    # Multi-camera setup with provided extrinsics
+    "camera0": {
+        "camera0": dict(
+            pose=np.array([
+                -0.022565587794617703,      # x
+                -0.662003675079514,         # y  
+                0.593798049759222,          # z
+                0.8335989637460393,         # w (moved from end)
+                -0.17889949739264788,       # x (quaternion)
+                0.3914096246504936,         # y (quaternion)
+                0.34627480879374745         # z (quaternion)
+            ]),
+            base_frame_id="fr3_link0",
+            fov=np.deg2rad(83.3),  # From horizontal_aperture=1.658, focal_length=1.0
             resolution=(320, 240),
+            serial_number="215122251334"
         )
     },
-    "viz": {
-        "viz_cam": dict(
-            pose=np.array(
-                [0.375, 0.696, 0.6, 0.412333, 0.212321, 0.0994459, -0.880348]
-            ),
-            fov=np.deg2rad(69.4),
+    "camera1": {
+        "camera1": dict(
+            pose=np.array([
+                0.6899072165113053,         # x
+                -0.6858108131755757,        # y
+                0.2398100897303653,         # z
+                0.3667691712090961,         # w (moved from end)
+                -0.25121055631838207,       # x (quaternion)
+                0.09807786562229344,        # y (quaternion)
+                0.8903675441747507          # z (quaternion)
+            ]),
+            base_frame_id="fr3_link0",
+            fov=np.deg2rad(83.3),  # From horizontal_aperture=1.658, focal_length=1.0
             resolution=(320, 240),
+            serial_number="213622252200"
         )
     },
-    "wrist": {
-        "wrist_cam": dict(
-            pose=np.array(
-                [
-                    0.07552634,
-                    -0.02599394,
-                    0.02404529,
-                    0.73417488,
-                    0.02648626,
-                    -0.00778071,
-                    0.67839898,
-                ]
-            ),
-            fov=[np.deg2rad(87), np.deg2rad(58)],
+    "camera2": {
+        "camera2": dict(
+            pose=np.array([
+                0.693868725700083,          # x
+                -0.6856771396231571,        # y
+                0.599392445222885,          # z
+                0.3429591117809985,         # w (moved from end)
+                -0.4023461474814715,        # x (quaternion)
+                0.1651437453325628,         # y (quaternion)
+                0.8326008459224264          # z (quaternion)
+            ]),
+            base_frame_id="fr3_link0",
+            fov=np.deg2rad(83.3),  # From horizontal_aperture=1.658, focal_length=1.0
             resolution=(320, 240),
-            mount_actor_name="panda_hand",  # "panda_hand",
-            noise_scale=0.5,
+            serial_number="231622302195"
         )
     },
-    "top": {
-        "top_cam": dict(
-            pose=np.concatenate(
-                [
-                    np.array([0, 0, 1.5]),
-                    transforms3d.euler.euler2quat(np.pi, 0, -np.pi / 2),
-                ]
-            ),
-            fov=np.deg2rad(69.4),
+    "camera3": {
+        "camera3": dict(
+            pose=np.array([
+                0.8756826746675879,         # x
+                0.052999383161436285,       # y
+                0.5963114855382364,         # z
+                -0.36568702407213793,       # w (moved from end)
+                -0.3930176278604368,        # x (quaternion)
+                -0.1521161465105955,        # y (quaternion)
+                0.8298619298335029          # z (quaternion)
+            ]),
+            base_frame_id="fr3_link0",
+            fov=np.deg2rad(83.3),  # From horizontal_aperture=1.658, focal_length=1.0
             resolution=(320, 240),
-        )
-    },
-    "left": {
-        "left_cam": dict(
-            pose=np.array(
-                [
-                    -0.19207954,
-                    0.59551661,
-                    0.53830318,
-                    -0.01238816,
-                    -0.01772414,
-                    0.92530522,
-                    -0.37860617,
-                ]
-            ),
-            fov=[np.deg2rad(87), np.deg2rad(58)],
-            resolution=(320, 240),
-            noise_scale=0.5,
-        )
-    },
-    "right": {
-        "right_cam": dict(
-            pose=np.array(
-                [
-                    -0.09048795,
-                    -0.61669572,
-                    0.43609362,
-                    -0.47339763,
-                    0.88004426,
-                    0.03741855,
-                    -0.00407857,
-                ]
-            ),
-            fov=[np.deg2rad(87), np.deg2rad(58)],
-            resolution=(320, 240),
-            noise_scale=0.5,
+            serial_number="242422302772"
         )
     },
     # TODO: Do we need this? We already defined the viewer in sim.py

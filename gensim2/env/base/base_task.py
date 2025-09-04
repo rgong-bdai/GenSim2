@@ -47,7 +47,7 @@ class GenSimBaseTask(object):
 
         self.asset_id_mode = asset_id
 
-        self.camera_names = ["wrist", "left", "right", "default"]
+        self.camera_names = ["camera0", "camera1", "camera2", "camera3"]
 
         self.env.setup_agent(tool=self.tool)
         for cam in self.camera_names:

@@ -38,7 +38,7 @@ class GenSim2VPLSaver:
         self.episode_data = {}
         self.metadata_info = {"num_timesteps": [], "num_episodes": 0}
         self.intrinsics = {}
-        self.keys_to_save = ["joint_pos", "joint_vel", "ee_position", "ee_rotation", "robot_dof_targets"]
+        self.keys_to_save = ["joint_pos", "joint_vel", "ee_position", "ee_rotation", "eef_pose", "gripper_width", "robot_dof_targets"]
         self.fps = fps
         self.save_critic_video = save_critic_video
         self.num_workers = num_workers
@@ -51,7 +51,7 @@ class GenSim2VPLSaver:
             "action", "observation", "reward", "done", "info",
             "robot_state", "object_positions", "object_rotations",
             "gripper_state", "keypoints", "task_description",
-            "pointcloud", "state", "image"
+            "point_cloud", "state", "image"
         ]
 
     def _log_memory_usage(self, stage: str, episode_index: Optional[int] = None) -> dict:
@@ -114,14 +114,54 @@ class GenSim2VPLSaver:
                 self.episode_data[episode_index]["ee_position"] = []
             if "ee_rotation" not in self.episode_data[episode_index]:
                 self.episode_data[episode_index]["ee_rotation"] = []
+            if "eef_pose" not in self.episode_data[episode_index]:
+                self.episode_data[episode_index]["eef_pose"] = []
+            if "gripper_width" not in self.episode_data[episode_index]:
+                self.episode_data[episode_index]["gripper_width"] = []
             
             # Use joint positions as proxy for end-effector position
             # This is a simplified approach - in practice you'd want proper FK
             ee_position = np.array([last_joint_pos[0], last_joint_pos[1], last_joint_pos[2]], dtype=np.float32)
-            ee_rotation = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)  # Default quaternion
+            ee_rotation = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)  # Default quaternion (w, x, y, z)
+            
+            # Create 4x4 transformation matrix and flatten it (16 elements)
+            transform_matrix = np.eye(4, dtype=np.float32)
+            
+            # Convert quaternion to rotation matrix
+            # SAPIEN uses [w, x, y, z] format (scalar-first)
+            w, x, y, z = ee_rotation
+            
+            # Quaternion to rotation matrix conversion
+            rotation_matrix = np.array([
+                [1 - 2*(y*y + z*z), 2*(x*y - z*w), 2*(x*z + y*w)],
+                [2*(x*y + z*w), 1 - 2*(x*x + z*z), 2*(y*z - x*w)],
+                [2*(x*z - y*w), 2*(y*z + x*w), 1 - 2*(x*x + y*y)]
+            ], dtype=np.float32)
+            
+            # Set rotation (top-left 3x3) and translation (top-right 3x1)
+            transform_matrix[:3, :3] = rotation_matrix
+            transform_matrix[:3, 3] = ee_position
+            
+            eef_pose = transform_matrix.flatten()  # Flatten 4x4 to 16 elements
+            
+            # Get gripper width from gripper state (convert gripper_state to width)
+            # gripper_state: 0.0 = closed, 1.0 = open
+            # gripper_width: approximate width in meters
+            if "observation" in episode_data and isinstance(episode_data["observation"], np.ndarray):
+                obs_array = episode_data["observation"]
+                if len(obs_array) >= 15:  # Expecting gripper state as last element
+                    gripper_state = obs_array[-1]
+                    # Convert gripper state to approximate width (0.0 to 0.08 meters)
+                    gripper_width = np.array([gripper_state * 0.08], dtype=np.float32)
+                else:
+                    gripper_width = np.array([0.04], dtype=np.float32)  # Default middle position
+            else:
+                gripper_width = np.array([0.04], dtype=np.float32)  # Default middle position
             
             self.episode_data[episode_index]["ee_position"].append(ee_position)
             self.episode_data[episode_index]["ee_rotation"].append(ee_rotation)
+            self.episode_data[episode_index]["eef_pose"].append(eef_pose)
+            self.episode_data[episode_index]["gripper_width"].append(gripper_width)
 
         # Store gripper state - extract from observation array
         if "observation" in episode_data and isinstance(episode_data["observation"], np.ndarray):
@@ -202,8 +242,8 @@ class GenSim2VPLSaver:
             # Handle list of observation dictionaries
             if isinstance(obs_list, list) and len(obs_list) > 0:
                 # Initialize data structures
-                if "pointcloud" not in self.episode_data[episode_index]:
-                    self.episode_data[episode_index]["pointcloud"] = {}
+                if "point_cloud" not in self.episode_data[episode_index]:
+                    self.episode_data[episode_index]["point_cloud"] = {}
                 if "state" not in self.episode_data[episode_index]:
                     self.episode_data[episode_index]["state"] = []
                 if "image" not in self.episode_data[episode_index]:
@@ -218,9 +258,9 @@ class GenSim2VPLSaver:
                             # Only save position and colors, ignore segmentation
                             for key in ['pos', 'colors']:
                                 if key in pc_data and pc_data[key] is not None:
-                                    if key not in self.episode_data[episode_index]["pointcloud"]:
-                                        self.episode_data[episode_index]["pointcloud"][key] = []
-                                    self.episode_data[episode_index]["pointcloud"][key].append(pc_data[key])
+                                    if key not in self.episode_data[episode_index]["point_cloud"]:
+                                        self.episode_data[episode_index]["point_cloud"][key] = []
+                                    self.episode_data[episode_index]["point_cloud"][key].append(pc_data[key])
                         
                         # Extract state data
                         if 'state' in obs:
@@ -232,17 +272,17 @@ class GenSim2VPLSaver:
             
             # Handle single observation dictionary (fallback)
             elif isinstance(obs_list, dict):
-                if "pointcloud" not in self.episode_data[episode_index]:
-                    self.episode_data[episode_index]["pointcloud"] = {}
+                if "point_cloud" not in self.episode_data[episode_index]:
+                    self.episode_data[episode_index]["point_cloud"] = {}
                 
                 if 'pointcloud' in obs_list:
                     pc_data = obs_list['pointcloud']
                     # Only save position and colors, ignore segmentation
                     for key in ['pos', 'colors']:
                         if key in pc_data and pc_data[key] is not None:
-                            if key not in self.episode_data[episode_index]["pointcloud"]:
-                                self.episode_data[episode_index]["pointcloud"][key] = []
-                            self.episode_data[episode_index]["pointcloud"][key].append(pc_data[key])
+                            if key not in self.episode_data[episode_index]["point_cloud"]:
+                                self.episode_data[episode_index]["point_cloud"][key] = []
+                            self.episode_data[episode_index]["point_cloud"][key].append(pc_data[key])
                 
                 if 'state' in obs_list:
                     if "state" not in self.episode_data[episode_index]:
@@ -362,7 +402,7 @@ class GenSim2VPLSaver:
                         continue
                     
                     # Handle pointcloud data - save timesteps with camera fusion
-                    if k == "pointcloud" and isinstance(v, dict):
+                    if k == "point_cloud" and isinstance(v, dict):
                         pc_grp = f_writer.create_group(k)
                         
                         # Get the number of timesteps
@@ -374,8 +414,6 @@ class GenSim2VPLSaver:
                         
                         # Save each timestep with camera fusion
                         for t in range(num_timesteps):
-                            timestep_grp = pc_grp.create_group(f'timestep_{t:03d}')
-                            
                             # Get pointcloud data for this timestep
                             pos_data = pos_list[t] if t < len(pos_list) else None
                             colors_data = colors_list[t] if t < len(colors_list) else None
@@ -389,25 +427,10 @@ class GenSim2VPLSaver:
                                 fused_data = self._fuse_cameras_at_timestep(timestep_pc_data)
                                 
                                 if fused_data:
-                                    # Save position data
+                                    # Create combined point cloud data for visuomotor compatibility
                                     if 'pos' in fused_data:
-                                        timestep_grp.create_dataset(
-                                            'pos', data=fused_data['pos'],
-                                            compression=compression_filter,
-                                            compression_opts=compression_opts
-                                        )
-                                    
-                                    # Save color data
-                                    if 'colors' in fused_data and fused_data['colors'] is not None:
-                                        colors = fused_data['colors']
-                                        timestep_grp.create_dataset(
-                                            'colors', data=colors,
-                                            compression=compression_filter,
-                                            compression_opts=compression_opts
-                                        )
-                                        
-                                        # Save combined data (pos + colors = 6 channels)
-                                        if 'pos' in fused_data:
+                                        if 'colors' in fused_data and fused_data['colors'] is not None:
+                                            colors = fused_data['colors']
                                             # Normalize colors to float32
                                             if colors.dtype == np.uint8:
                                                 colors_norm = colors.astype(np.float32) / 255.0
@@ -416,17 +439,15 @@ class GenSim2VPLSaver:
                                             else:
                                                 colors_norm = colors
                                             
-                                            # Combine position + colors (6 channels)
+                                            # Combine position and normalized colors (6 channels: xyz + rgb)
                                             combined = np.concatenate([fused_data['pos'], colors_norm], axis=1)
-                                            timestep_grp.create_dataset(
-                                                'combined', data=combined,
-                                                compression=compression_filter,
-                                                compression_opts=compression_opts
-                                            )
-                                    else:
-                                        # Only position available (3 channels)
-                                        timestep_grp.create_dataset(
-                                            'combined', data=fused_data['pos'],
+                                        else:
+                                            # Only position available (3 channels: xyz)
+                                            combined = fused_data['pos']
+                                        
+                                        # Store as direct dataset under point_cloud group (compatible with visuomotor)
+                                        pc_grp.create_dataset(
+                                            str(t), data=combined,
                                             compression=compression_filter,
                                             compression_opts=compression_opts
                                         )
@@ -507,12 +528,41 @@ class GenSim2VPLSaver:
                 intrinsics_array = np.stack(list(self.intrinsics.values()))
                 data["intrinsics"] = intrinsics_array
 
-        # Update metadata
-        # Use observation length if action is not available
+        # Update metadata - correctly handle nested data structures
         if "action" in self.episode_data[episode_index]:
-            num_timesteps = len(self.episode_data[episode_index]["action"])
+            action_data = self.episode_data[episode_index]["action"]
+            if hasattr(action_data, 'shape'):
+                # Handle numpy arrays
+                if len(action_data.shape) > 1:
+                    num_timesteps = action_data.shape[1]  # (batch, timesteps, dims)
+                else:
+                    num_timesteps = action_data.shape[0]  # (timesteps,)
+            else:
+                # Handle lists
+                if len(action_data) > 0 and hasattr(action_data[0], 'shape'):
+                    # List contains arrays - use the shape of the first array
+                    first_array = action_data[0]
+                    if len(first_array.shape) > 1:
+                        num_timesteps = first_array.shape[1]  # (batch, timesteps, dims)
+                    else:
+                        num_timesteps = first_array.shape[0]  # (timesteps,)
+                elif len(action_data) > 0 and isinstance(action_data[0], list):
+                    # Nested list - get the length of the inner list
+                    num_timesteps = len(action_data[0])
+                else:
+                    # Regular list
+                    num_timesteps = len(action_data)
         elif "observation" in self.episode_data[episode_index]:
-            num_timesteps = len(self.episode_data[episode_index]["observation"])
+            obs_data = self.episode_data[episode_index]["observation"]
+            if hasattr(obs_data, 'shape'):
+                # Handle numpy arrays
+                if len(obs_data.shape) > 1:
+                    num_timesteps = obs_data.shape[1]  # (batch, timesteps, dims)
+                else:
+                    num_timesteps = obs_data.shape[0]  # (timesteps,)
+            else:
+                # Handle list - for observations, typically a list of dictionaries
+                num_timesteps = len(obs_data) if len(obs_data) > 0 else 0
         else:
             num_timesteps = 0
             

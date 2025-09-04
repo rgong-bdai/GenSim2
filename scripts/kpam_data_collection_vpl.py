@@ -69,9 +69,9 @@ rigid_body_envs = [
 # Combine all environments
 all_envs = articulated_envs + rigid_body_envs
 
-def collect_episode_data(env, max_steps, render=False):
+def collect_episode_data(env, max_steps, render=False, random_reset=False):
     """Collect data for a single episode using KPAM planner."""
-    obs = env.reset()
+    obs = env.reset(random_reset)
     episode_data = []
     
     for task in env.sub_tasks:
@@ -185,7 +185,7 @@ def main():
             
             # Collect episode data
             episode_data = collect_episode_data(
-                env, args.max_steps, args.render
+                env, args.max_steps, args.render, args.random
             )
             
             # Check if episode was successful
@@ -237,7 +237,28 @@ def main():
                         
                         print(f"  Debug: Episode data keys after store: {list(vpl_saver.episode_data[eps-1].keys())}")
                         
-                        print(f"  ✓ Episode {eps} data stored in VPL saver!")
+                        # Save episode immediately to disk
+                        try:
+                            episodes_saved = vpl_saver.save_episode(
+                                episode_index=eps-1,
+                                save_to_video=False,
+                                compression_filter="gzip",
+                                compression_opts=9,
+                                point_cloud_only=False
+                            )
+                            print(f"  ✓ Episode {eps} saved immediately to disk! ({episodes_saved} episodes)")
+                            
+                            # Clear episode data from memory to free up space
+                            if eps-1 in vpl_saver.episode_data:
+                                del vpl_saver.episode_data[eps-1]
+                                print(f"  ✓ Episode {eps} data cleared from memory")
+                                
+                        except Exception as save_error:
+                            print(f"  ✗ Error saving episode {eps} to disk: {save_error}")
+                            import traceback
+                            traceback.print_exc()
+                        
+                        print(f"  ✓ Episode {eps} data stored and saved!")
                         
                     except Exception as e:
                         print(f"  ✗ Error saving episode {eps}: {e}")
@@ -272,14 +293,13 @@ def main():
     for env_name, rate in success_rate.items():
         print(f"{env_name}: {rate:.2%} ({rate*100:.1f}%)")
     
-    # Save all data and close VPL saver
+    # Close VPL saver (episodes already saved incrementally)
     if args.save and vpl_saver:
-        print(f"\nSaving all episodes to VPL format...")
-        total_episodes = vpl_saver.save_dataset()
-        print(f"✓ Total episodes saved: {total_episodes}")
+        print(f"\nClosing VPL saver (episodes already saved incrementally)...")
         vpl_saver.close()
-        print(f"✓ VPL data saved to: {args.vpl_dir}")
+        print(f"✓ VPL data collection completed: {args.vpl_dir}")
         print(f"  Data format: Compatible with rai.fm VPLSaver")
+        print(f"  Episodes were saved incrementally during collection")
 
 if __name__ == "__main__":
     main()

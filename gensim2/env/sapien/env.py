@@ -70,7 +70,7 @@ class SapienEnv(SapienSim, GenSimBaseEnv):
 
     def initialize_agent(self):
         if self.agent is not None:
-            self.agent.set_root_pose(sapien.Pose([-0.615, 0, 0]))
+            self.agent.set_root_pose(sapien.Pose([0.0, 0.0, 0.0]))
             self.agent.set_qpos(self.init_qpos)
 
         super().initialize_agent()

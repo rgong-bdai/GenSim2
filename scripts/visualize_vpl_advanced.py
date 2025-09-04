@@ -75,9 +75,9 @@ def load_vpl_data(data_dir: Path):
                 episode_data = {}
                 for key in f.keys():
                     if isinstance(f[key], h5py.Group):
-                        # Handle groups (like pointcloud)
-                        if key == 'pointcloud':
-                            # Load timestep data from pointcloud group
+                        # Handle groups (like point_cloud)
+                        if key == 'point_cloud':
+                            # Load timestep data from point_cloud group
                             pc_group = f[key]
                             timestep_keys = [k for k in pc_group.keys() if k.startswith('timestep_')]
                             timestep_keys.sort()
@@ -239,8 +239,8 @@ def visualize_point_cloud(episodes, episode_idx=0, fps=30):
     vis.destroy_window()
     
     # Old code below - remove this section
-    if False and isinstance(observations, dict) and 'pointcloud' in observations:
-        pointcloud_data = observations['pointcloud']
+    if False and isinstance(observations, dict) and 'point_cloud' in observations:
+        pointcloud_data = observations['point_cloud']
         
         if isinstance(pointcloud_data, dict):
             # Multiple camera point clouds
@@ -368,8 +368,8 @@ def visualize_trajectory_3d(episodes, episode_idx=0, fps=30):
     # Add point cloud if available
     if 'observation' in episode_data:
         observations = episode_data['observation']
-        if isinstance(observations, dict) and 'pointcloud' in observations:
-            pointcloud_data = observations['pointcloud']
+        if isinstance(observations, dict) and 'point_cloud' in observations:
+            pointcloud_data = observations['point_cloud']
             
             if isinstance(pointcloud_data, dict):
                 for cam_name, cam_data in pointcloud_data.items():

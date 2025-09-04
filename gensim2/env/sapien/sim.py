@@ -78,8 +78,8 @@ class SapienSim(object):
         self.no_rgb = no_rgb and (not use_gui)
 
         self.current_step = 0
-        self._sim_freq = 100
-        self._sim_steps_per_control = 80
+        self._sim_freq = 120
+        self._sim_steps_per_control = 4
 
         self.dt = self._sim_steps_per_control / self._sim_freq
 
@@ -95,7 +95,7 @@ class SapienSim(object):
 
         # load table
         self.table = self.create_table(
-            table_height=0.6, table_half_size=[0.65, 0.65, 0.025]
+            table_height=0.6, table_half_size=[0.8, 0.8, 0.025]
         )
         # self.create_room()
 
@@ -103,6 +103,7 @@ class SapienSim(object):
 
     def construct_scene(self):
         scene_config = sapien.SceneConfig()
+        scene_config.contact_offset = 0.005  # Set contact offset to 1 cm
         self.sim = self.engine.create_scene(config=scene_config)
         self.sim.set_timestep(1.0 / self._sim_freq)
         try:
@@ -142,7 +143,7 @@ class SapienSim(object):
         loader: sapien.URDFLoader = self.sim.create_urdf_loader()
         loader.fix_root_link = True
 
-        self.init_root_pose = sapien.Pose([-0.615, 0, 0])
+        self.init_root_pose = sapien.Pose([0, 0, 0])
         self.init_qpos = [
             0,
             -0.32,

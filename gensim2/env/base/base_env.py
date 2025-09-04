@@ -114,7 +114,7 @@ class GenSimBaseEnv(gym.Env):
 
     @property
     def horizon(self):
-        return 50
+        return 240
 
     def get_contacts(self):
         raise NotImplementedError
@@ -217,7 +217,6 @@ class GenSimBaseEnv(gym.Env):
             pose[3:] = action[3:7]
 
         open_gripper = action[-1]
-        print("Open gripper:", open_gripper)
         self.set_gripper(open_gripper)
 
         self.plan_timestep = 0.1
