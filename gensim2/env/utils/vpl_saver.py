@@ -15,6 +15,9 @@ class GenSim2VPLSaver:
     This saver is designed to be compatible with the VPL data format used in rai.fm,
     but adapted for GenSim2's specific environment and data structure.
     """
+    
+    # Workspace limits for point cloud cropping [min_xyz, max_xyz]
+    WORKSPACE_LIMITS = np.array([[0.15, -0.68, 0.0], [0.65, -0.2, 0.3]])
 
     def __init__(self, base_dir: str, keep_terminated: bool = False, fps: int = 30, 
                  num_workers: int = 4, save_states_only: bool = False, 
@@ -57,6 +60,33 @@ class GenSim2VPLSaver:
         print(f"VPL saver initialized. Data will be saved to: {self.base_dir}")
         print(f"Keys to save: {self.keys_to_save}")
         print(f"GenSim2 keys to save: {self.gensim2_keys_to_save}")
+        print(f"Workspace limits: {self.WORKSPACE_LIMITS}")
+
+    def _crop_point_cloud_to_workspace(self, point_cloud: np.ndarray) -> np.ndarray:
+        """Crop point cloud to workspace limits.
+        
+        Args:
+            point_cloud: Point cloud array of shape (N, 3) or (N, 6) [xyz + optional rgb]
+            
+        Returns:
+            Cropped point cloud array
+        """
+        if point_cloud is None or len(point_cloud) == 0:
+            return point_cloud
+            
+        # Extract xyz coordinates (first 3 columns)
+        xyz = point_cloud[:, :3]
+        
+        # Create mask for points within workspace limits
+        min_limits = self.WORKSPACE_LIMITS[0]
+        max_limits = self.WORKSPACE_LIMITS[1]
+        
+        mask = np.all((xyz >= min_limits) & (xyz <= max_limits), axis=1)
+        
+        # Apply mask to filter points
+        cropped_pc = point_cloud[mask]
+        
+        return cropped_pc
 
     def _log_memory_usage(self, stage: str, episode_index: Optional[int] = None) -> dict:
         """Log memory usage if enabled."""
@@ -424,12 +454,25 @@ class GenSim2VPLSaver:
         all_colors = []
         
         # Handle different data structures
-        if 'pos' in pointcloud_timestep_data and 'colors' in pointcloud_timestep_data:
-            # Single camera data - just return as is
-            return {
-                'pos': pointcloud_timestep_data['pos'],
+        if 'pos' in pointcloud_timestep_data:
+            # Single camera data - apply workspace cropping
+            cropped_pos = self._crop_point_cloud_to_workspace(pointcloud_timestep_data['pos'])
+            
+            result = {
+                'pos': cropped_pos,
                 'colors': pointcloud_timestep_data.get('colors', None)
             }
+            
+            # If we have colors, we need to crop them too to match the positions
+            if result['colors'] is not None and len(result['colors']) > 0:
+                # Apply the same mask that was used for positions
+                xyz = pointcloud_timestep_data['pos']
+                min_limits = self.WORKSPACE_LIMITS[0]
+                max_limits = self.WORKSPACE_LIMITS[1]
+                mask = np.all((xyz >= min_limits) & (xyz <= max_limits), axis=1)
+                result['colors'] = result['colors'][mask]
+            
+            return result
         
         # Multiple cameras - fuse them spatially
         for camera_name, camera_data in pointcloud_timestep_data.items():
@@ -442,9 +485,29 @@ class GenSim2VPLSaver:
         # Concatenate data from all cameras
         fused_data = {}
         if all_positions:
-            fused_data['pos'] = np.concatenate(all_positions, axis=0)
+            fused_pos = np.concatenate(all_positions, axis=0)
+            fused_data['pos'] = fused_pos
         if all_colors:
-            fused_data['colors'] = np.concatenate(all_colors, axis=0)
+            fused_colors = np.concatenate(all_colors, axis=0)
+            fused_data['colors'] = fused_colors
+            
+        # Apply workspace cropping to fused point cloud
+        if fused_data and 'pos' in fused_data:
+            # Crop positions to workspace limits
+            cropped_pos = self._crop_point_cloud_to_workspace(fused_data['pos'])
+            fused_data['pos'] = cropped_pos
+            
+            # If we have colors, we need to crop them too to match the positions
+            if 'colors' in fused_data and fused_data['colors'] is not None:
+                # Re-crop colors to match the cropped positions
+                # We need to apply the same mask that was used for positions
+                if len(fused_data['colors']) == len(all_positions[0]) * len(all_positions):
+                    # Colors were concatenated in the same order as positions
+                    xyz = np.concatenate(all_positions, axis=0)
+                    min_limits = self.WORKSPACE_LIMITS[0]
+                    max_limits = self.WORKSPACE_LIMITS[1]
+                    mask = np.all((xyz >= min_limits) & (xyz <= max_limits), axis=1)
+                    fused_data['colors'] = fused_data['colors'][mask]
             
         return fused_data if fused_data else None
 
