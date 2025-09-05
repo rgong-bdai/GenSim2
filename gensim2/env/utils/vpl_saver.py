@@ -53,6 +53,10 @@ class GenSim2VPLSaver:
             "gripper_state", "keypoints", "task_description",
             "point_cloud", "state", "image"
         ]
+        
+        print(f"VPL saver initialized. Data will be saved to: {self.base_dir}")
+        print(f"Keys to save: {self.keys_to_save}")
+        print(f"GenSim2 keys to save: {self.gensim2_keys_to_save}")
 
     def _log_memory_usage(self, stage: str, episode_index: Optional[int] = None) -> dict:
         """Log memory usage if enabled."""
@@ -172,6 +176,58 @@ class GenSim2VPLSaver:
                 if "gripper_state" not in self.episode_data[episode_index]:
                     self.episode_data[episode_index]["gripper_state"] = []
                 self.episode_data[episode_index]["gripper_state"].append(gripper_state)
+        
+        # Handle new observation format (list of dictionaries)
+        elif "observation" in episode_data and isinstance(episode_data["observation"], list):
+            obs_list = episode_data["observation"]
+            
+            # Process each observation in the list
+            for obs_dict in obs_list:
+                if isinstance(obs_dict, dict) and "state" in obs_dict:
+                    state_array = obs_dict["state"]
+                    
+                    # Extract end-effector pose from state array
+                    # State format: [ee_position(3), ee_quaternion(4), joint_pos(8)]
+                    ee_position = state_array[0:3].astype(np.float32)
+                    ee_rotation = state_array[3:7].astype(np.float32)  # [w, x, y, z]
+                    
+                    # Create 4x4 transformation matrix and flatten it (16 elements)
+                    transform_matrix = np.eye(4, dtype=np.float32)
+                    
+                    # Convert quaternion to rotation matrix
+                    w, x, y, z = ee_rotation
+                    rotation_matrix = np.array([
+                        [1 - 2*(y*y + z*z), 2*(x*y - z*w), 2*(x*z + y*w)],
+                        [2*(x*y + z*w), 1 - 2*(x*x + z*z), 2*(y*z - x*w)],
+                        [2*(x*z - y*w), 2*(y*z + x*w), 1 - 2*(x*x + y*y)]
+                    ], dtype=np.float32)
+                    
+                    transform_matrix[:3, :3] = rotation_matrix
+                    transform_matrix[:3, 3] = ee_position
+                    eef_pose = transform_matrix.flatten()
+                    
+                    # Extract gripper width from state (last element is gripper state)
+                    gripper_state = state_array[14]  # Last element
+                    gripper_width = np.array([gripper_state * 0.08], dtype=np.float32)
+                    
+                    # Initialize data structures if needed
+                    if "ee_position" not in self.episode_data[episode_index]:
+                        self.episode_data[episode_index]["ee_position"] = []
+                    if "ee_rotation" not in self.episode_data[episode_index]:
+                        self.episode_data[episode_index]["ee_rotation"] = []
+                    if "eef_pose" not in self.episode_data[episode_index]:
+                        self.episode_data[episode_index]["eef_pose"] = []
+                    if "gripper_width" not in self.episode_data[episode_index]:
+                        self.episode_data[episode_index]["gripper_width"] = []
+                    if "gripper_state" not in self.episode_data[episode_index]:
+                        self.episode_data[episode_index]["gripper_state"] = []
+                    
+                    # Store the data
+                    self.episode_data[episode_index]["ee_position"].append(ee_position)
+                    self.episode_data[episode_index]["ee_rotation"].append(ee_rotation)
+                    self.episode_data[episode_index]["eef_pose"].append(eef_pose)
+                    self.episode_data[episode_index]["gripper_width"].append(gripper_width)
+                    self.episode_data[episode_index]["gripper_state"].append(gripper_state)
 
         # Store object positions and rotations - try to get from environment
         obj_positions = {}
@@ -303,19 +359,43 @@ class GenSim2VPLSaver:
         if "action" in episode_data:
             if "action" not in self.episode_data[episode_index]:
                 self.episode_data[episode_index]["action"] = []
-            self.episode_data[episode_index]["action"].append(episode_data["action"])
+            
+            # Handle action sequences (list of actions)
+            if isinstance(episode_data["action"], list):
+                # Store individual actions from the sequence
+                for action in episode_data["action"]:
+                    self.episode_data[episode_index]["action"].append(action)
+            else:
+                # Handle single action (backward compatibility)
+                self.episode_data[episode_index]["action"].append(episode_data["action"])
 
         # Store rewards if available
         if "reward" in episode_data:
             if "reward" not in self.episode_data[episode_index]:
                 self.episode_data[episode_index]["reward"] = []
-            self.episode_data[episode_index]["reward"].append(episode_data["reward"])
+            
+            # Handle reward sequences (list of rewards)
+            if isinstance(episode_data["reward"], list):
+                # Store individual rewards from the sequence
+                for reward in episode_data["reward"]:
+                    self.episode_data[episode_index]["reward"].append(reward)
+            else:
+                # Handle single reward (backward compatibility)
+                self.episode_data[episode_index]["reward"].append(episode_data["reward"])
 
         # Store done flags if available
         if "done" in episode_data:
             if "done" not in self.episode_data[episode_index]:
                 self.episode_data[episode_index]["done"] = []
-            self.episode_data[episode_index]["done"].append(episode_data["done"])
+            
+            # Handle done sequences (list of done flags)
+            if isinstance(episode_data["done"], list):
+                # Store individual done flags from the sequence
+                for done in episode_data["done"]:
+                    self.episode_data[episode_index]["done"].append(done)
+            else:
+                # Handle single done flag (backward compatibility)
+                self.episode_data[episode_index]["done"].append(episode_data["done"])
 
         # Store task description if available
         if hasattr(env, 'task') and hasattr(env.task, 'task_description'):
@@ -508,8 +588,8 @@ class GenSim2VPLSaver:
                     f_writer.create_dataset(k, data=data, **ds_kwargs)
 
                 # Handle object poses / articulated data
-                elif k in ("obj_positions", "obj_rotations", "articulated_joint_pos", 
-                          "articulated_root_pos", "articulated_root_rot"):
+                elif k in ("obj_positions", "obj_rotations", "articulated_joint_pos",
+                           "articulated_root_pos", "articulated_root_rot"):
                     grp = f_writer.create_group(k)
                     for obj_id, arr in v.items():
                         if isinstance(arr, list):
@@ -520,52 +600,31 @@ class GenSim2VPLSaver:
                             compression_opts=compression_opts
                         )
 
-
-
         # Save intrinsics if available
         if self.intrinsics and episode_index == 0:
             with h5py.File(join(self.base_dir, "intrinsics.h5"), "w") as data:
                 intrinsics_array = np.stack(list(self.intrinsics.values()))
                 data["intrinsics"] = intrinsics_array
 
-        # Update metadata - correctly handle nested data structures
-        if "action" in self.episode_data[episode_index]:
-            action_data = self.episode_data[episode_index]["action"]
-            if hasattr(action_data, 'shape'):
-                # Handle numpy arrays
-                if len(action_data.shape) > 1:
-                    num_timesteps = action_data.shape[1]  # (batch, timesteps, dims)
+        # Update metadata after HDF5 file is written
+        # Read the actual HDF5 file to get correct timestep count
+        episode_file = join(episode_dir, f"episode_{episode_index}.h5")
+        try:
+            with h5py.File(episode_file, 'r') as f:
+                if 'action' in f:
+                    num_timesteps = f['action'].shape[0]
+                elif 'observation' in f:
+                    num_timesteps = f['observation'].shape[0]
                 else:
-                    num_timesteps = action_data.shape[0]  # (timesteps,)
-            else:
-                # Handle lists
-                if len(action_data) > 0 and hasattr(action_data[0], 'shape'):
-                    # List contains arrays - use the shape of the first array
-                    first_array = action_data[0]
-                    if len(first_array.shape) > 1:
-                        num_timesteps = first_array.shape[1]  # (batch, timesteps, dims)
-                    else:
-                        num_timesteps = first_array.shape[0]  # (timesteps,)
-                elif len(action_data) > 0 and isinstance(action_data[0], list):
-                    # Nested list - get the length of the inner list
-                    num_timesteps = len(action_data[0])
-                else:
-                    # Regular list
-                    num_timesteps = len(action_data)
-        elif "observation" in self.episode_data[episode_index]:
-            obs_data = self.episode_data[episode_index]["observation"]
-            if hasattr(obs_data, 'shape'):
-                # Handle numpy arrays
-                if len(obs_data.shape) > 1:
-                    num_timesteps = obs_data.shape[1]  # (batch, timesteps, dims)
-                else:
-                    num_timesteps = obs_data.shape[0]  # (timesteps,)
-            else:
-                # Handle list - for observations, typically a list of dictionaries
-                num_timesteps = len(obs_data) if len(obs_data) > 0 else 0
-        else:
+                    print(f"Warning: No action or observation data found in episode {episode_index}")
+                    num_timesteps = 0
+        except Exception as e:
+            print(f"Error reading episode file for metadata: {e}")
             num_timesteps = 0
             
+        # Skip the old logic - we now have num_timesteps from the HDF5 file
+        # Old logic is disabled - we use the value read from HDF5 file above
+        
         self.metadata_info["num_timesteps"].append(num_timesteps)
         self.metadata_info["num_episodes"] += 1
         
@@ -579,8 +638,105 @@ class GenSim2VPLSaver:
         
         return self.metadata_info["num_episodes"]
 
-    def save_dataset(self, save_to_video: bool = False, compression_filter: str = "gzip", 
-                    compression_opts: int = 9, point_cloud_only: bool = False) -> int:
+    def _get_episode_timesteps(self, episode_index: int) -> int:
+        """Get the number of timesteps for a specific episode."""
+        if "action" in self.episode_data[episode_index]:
+            action_data = self.episode_data[episode_index]["action"]
+            if hasattr(action_data, 'shape'):
+                # Handle numpy arrays
+                if len(action_data.shape) > 1:
+                    return action_data.shape[1]  # (batch, timesteps, dims)
+                else:
+                    return action_data.shape[0]  # (timesteps,)
+            else:
+                # Handle lists
+                if len(action_data) > 0 and hasattr(action_data[0], 'shape'):
+                    # List contains arrays - use the shape of the first array
+                    first_array = action_data[0]
+                    if len(first_array.shape) > 1:
+                        return first_array.shape[1]  # (batch, timesteps, dims)
+                    else:
+                        return first_array.shape[0]  # (timesteps,)
+                elif len(action_data) > 0 and isinstance(action_data[0], list):
+                    # Nested list - get the length of the inner list
+                    return len(action_data[0])
+                else:
+                    # Regular list
+                    return len(action_data)
+        elif "observation" in self.episode_data[episode_index]:
+            obs_data = self.episode_data[episode_index]["observation"]
+            if hasattr(obs_data, 'shape'):
+                if len(obs_data.shape) > 1:
+                    return obs_data.shape[1]  # (batch, timesteps, dims)
+                else:
+                    return obs_data.shape[0]  # (timesteps,)
+            else:
+                return len(obs_data)
+        else:
+            # Fallback: count any available data
+            for key, data in self.episode_data[episode_index].items():
+                if isinstance(data, list) and len(data) > 0:
+                    return len(data)
+            return 0
+
+    def _update_metadata_file(self) -> None:
+        """Update the metadata.json file with current episode information."""
+        metadata_path = join(self.base_dir, "metadata.json")
+        metadata_dict = {
+            "num_timesteps": self.metadata_info["num_timesteps"],
+            "num_episodes": self.metadata_info["num_episodes"]
+        }
+        
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata_dict, f, indent=4)
+        
+        print(f"Updated metadata.json with {self.metadata_info['num_episodes']} episodes")
+
+    def fix_metadata_file(self) -> None:
+        """Fix metadata.json file by scanning existing episode files."""
+        print("Scanning existing episodes to fix metadata.json...")
+        
+        # Reset metadata
+        self.metadata_info = {"num_timesteps": [], "num_episodes": 0}
+        
+        # Scan for existing episodes
+        episode_index = 0
+        while True:
+            episode_dir = join(self.base_dir, f"episode_{episode_index}")
+            episode_file = join(episode_dir, f"episode_{episode_index}.h5")
+            
+            if not os.path.exists(episode_file):
+                break
+                
+            # Get timesteps from the HDF5 file
+            try:
+                with h5py.File(episode_file, 'r') as f:
+                    if 'action' in f:
+                        num_timesteps = f['action'].shape[0]
+                    elif 'observation' in f:
+                        num_timesteps = f['observation'].shape[0]
+                    else:
+                        print(f"Warning: No action or observation data found in episode {episode_index}")
+                        num_timesteps = 0
+                        
+                self.metadata_info["num_timesteps"].append(num_timesteps)
+                self.metadata_info["num_episodes"] += 1
+                print(f"Found episode {episode_index} with {num_timesteps} timesteps")
+                
+            except Exception as e:
+                print(f"Error reading episode {episode_index}: {e}")
+                break
+                
+            episode_index += 1
+        
+        # Update the metadata file
+        self._update_metadata_file()
+        print(f"Fixed metadata.json: {self.metadata_info['num_episodes']} episodes found")
+
+    def save_dataset(self, save_to_video: bool = False, 
+                     compression_filter: str = "gzip",
+                     compression_opts: int = 9, 
+                     point_cloud_only: bool = False) -> int:
         """Save all episodes in the dataset.
         
         Args:

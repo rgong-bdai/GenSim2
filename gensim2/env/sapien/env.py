@@ -70,8 +70,14 @@ class SapienEnv(SapienSim, GenSimBaseEnv):
 
     def initialize_agent(self):
         if self.agent is not None:
-            self.agent.set_root_pose(sapien.Pose([0.0, 0.0, 0.0]))
-            self.agent.set_qpos(self.init_qpos)
+            # Randomize initial joint positions for non-finger joints (0-6) with ±0.125 rad
+            randomized_qpos = self.init_qpos.copy()
+            for i in range(7):  # Joints 0-6 (non-finger joints)
+                randomized_qpos[i] += np.random.uniform(-0.125, 0.125)
+            
+            print(f"Original qpos: {self.init_qpos[:7]}")
+            print(f"Randomized qpos: {randomized_qpos[:7]}")
+            self.agent.set_qpos(randomized_qpos)
 
         super().initialize_agent()
 

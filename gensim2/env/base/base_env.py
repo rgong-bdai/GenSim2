@@ -178,17 +178,17 @@ class GenSimBaseEnv(gym.Env):
         self.add_noise_to_camera()
 
     def setup(self):
-        self.init_root_pose = [-0.615, 0, 0]
+        self.init_root_pose = [0.0, 0.0, 0.0]
         self.init_qpos = [
-            0,
-            -0.32,
-            0.0,
-            -2.617993877991494,
-            0.0,
-            2.23,
-            0.7853981633974483,
-            0,
-            0,
+            0.192,
+            0.004,
+            0.192,
+            -2.144,
+            0.004,
+            2.152,
+            1.162,
+            0.04,
+            0.04,
         ]
         self.tcp_name = "fr3_hand"  # "panda_hand"
         self.ee_link_name = "fr3_hand"  # "panda_hand"
@@ -428,7 +428,7 @@ class GenSimBaseEnv(gym.Env):
     def create_camera_from_pose(self):
         raise NotImplementedError
 
-    def setup_camera_from_config(self, config: Dict[str, Dict], use_opencv_trans=True):
+    def setup_camera_from_config(self, config: Dict[str, Dict], use_opencv_trans=False):
         for cam_name, cfg in config.items():
             if cam_name in self.cameras.keys():
                 raise ValueError(f"Camera {cam_name} already exists in the environment")

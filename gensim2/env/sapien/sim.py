@@ -95,7 +95,7 @@ class SapienSim(object):
 
         # load table
         self.table = self.create_table(
-            table_height=0.6, table_half_size=[0.8, 0.8, 0.025]
+            table_height=0.6, table_half_size=[1.0, 1.0, 0.025]
         )
         # self.create_room()
 
@@ -145,13 +145,13 @@ class SapienSim(object):
 
         self.init_root_pose = sapien.Pose([0, 0, 0])
         self.init_qpos = [
-            0,
-            -0.32,
-            0.0,
-            -2.617993877991494,
-            0.0,
-            2.23,
-            0.7853981633974483,
+            0.192,
+            0.004,
+            0.192,
+            -2.144,
+            0.004,
+            2.152,
+            1.162,
             0.04,
             0.04,
         ]
