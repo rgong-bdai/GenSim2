@@ -69,7 +69,7 @@ class GenSim2VPLSaver:
             point_cloud: Point cloud array of shape (N, 3) or (N, 6) [xyz + optional rgb]
             
         Returns:
-            Cropped point cloud array
+            Cropped point cloud array, or None if no points remain after cropping
         """
         if point_cloud is None or len(point_cloud) == 0:
             return point_cloud
@@ -85,6 +85,12 @@ class GenSim2VPLSaver:
         
         # Apply mask to filter points
         cropped_pc = point_cloud[mask]
+        
+        # Check if we have any points left after cropping
+        if len(cropped_pc) == 0:
+            print(f"Warning: No points remain after workspace cropping. "
+                  f"Original: {len(point_cloud)} points, Cropped: 0 points")
+            return None
         
         return cropped_pc
 
@@ -458,6 +464,10 @@ class GenSim2VPLSaver:
             # Single camera data - apply workspace cropping
             cropped_pos = self._crop_point_cloud_to_workspace(pointcloud_timestep_data['pos'])
             
+            # If no points remain after cropping, return None to discard this timestep
+            if cropped_pos is None:
+                return None
+            
             result = {
                 'pos': cropped_pos,
                 'colors': pointcloud_timestep_data.get('colors', None)
@@ -495,6 +505,11 @@ class GenSim2VPLSaver:
         if fused_data and 'pos' in fused_data:
             # Crop positions to workspace limits
             cropped_pos = self._crop_point_cloud_to_workspace(fused_data['pos'])
+            
+            # If no points remain after cropping, return None to discard this timestep
+            if cropped_pos is None:
+                return None
+                
             fused_data['pos'] = cropped_pos
             
             # If we have colors, we need to crop them too to match the positions
@@ -555,6 +570,9 @@ class GenSim2VPLSaver:
                         
                         print(f"Saving {num_timesteps} timesteps with camera-fused point clouds")
                         
+                        # Track valid timesteps (those with points after cropping)
+                        valid_timesteps = 0
+                        
                         # Save each timestep with camera fusion
                         for t in range(num_timesteps):
                             # Get pointcloud data for this timestep
@@ -594,7 +612,18 @@ class GenSim2VPLSaver:
                                             compression=compression_filter,
                                             compression_opts=compression_opts
                                         )
+                                        
+                                        # Increment valid timesteps counter
+                                        valid_timesteps += 1
                         
+                        # Check if we have enough valid timesteps
+                        min_required_timesteps = max(1, num_timesteps // 4)  # At least 25% of timesteps should be valid
+                        if valid_timesteps < min_required_timesteps:
+                            raise ValueError(f"Episode {episode_index}: Too few valid timesteps after workspace cropping. "
+                                           f"Valid: {valid_timesteps}/{num_timesteps} (minimum required: {min_required_timesteps}). "
+                                           f"Consider adjusting workspace limits.")
+                        
+                        print(f"Episode {episode_index}: Saved {valid_timesteps}/{num_timesteps} valid timesteps")
                         continue  # Skip general processing for pointcloud
                     
                     # Handle state data (convert list to array)
